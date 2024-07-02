@@ -106,35 +106,35 @@ class Environment:
         next_state = choices(next_supp, next_prob)[0]
         return next_state
 
-    def observation_function(self, state):
-        (st, q) = state
-        if st in self.sensors[0]:
-            return ["0"]
-        elif st in self.sensors[1]:
-            return ["h1"]
-        elif st in self.sensors[2]:
-            return ["2"]
-        elif st in self.sensors[3]:
-            return ["b", "n"]
-        else:
-            return ["r", "n"]
-
-    def observation_function_sampler(self, state):
-        observation_set = self.observation_function(state)
-        if len(observation_set) > 1:
-            return choices(observation_set, [1 - self.obs_noise, self.obs_noise], k=1)[0]
-        else:
-            return observation_set[0]
-
-    def emission_function(self, state, o):
-        observation_set = self.observation_function(state)
-        if o in observation_set:
-            if len(observation_set) == 1:
-                return 1
-            else:
-                if o == "n":
-                    return self.obs_noise
-                else:
-                    return 1 - self.obs_noise
-        else:
-            return 0
+    # def observation_function(self, state):
+    #     (st, q) = state
+    #     if st in self.sensors[0]:
+    #         return ["0"]
+    #     elif st in self.sensors[1]:
+    #         return ["h1"]
+    #     elif st in self.sensors[2]:
+    #         return ["2"]
+    #     elif st in self.sensors[3]:
+    #         return ["b", "n"]
+    #     else:
+    #         return ["r", "n"]
+    #
+    # def observation_function_sampler(self, state):
+    #     observation_set = self.observation_function(state)
+    #     if len(observation_set) > 1:
+    #         return choices(observation_set, [1 - self.obs_noise, self.obs_noise], k=1)[0]
+    #     else:
+    #         return observation_set[0]
+    #
+    # def emission_function(self, state, o):
+    #     observation_set = self.observation_function(state)
+    #     if o in observation_set:
+    #         if len(observation_set) == 1:
+    #             return 1
+    #         else:
+    #             if o == "n":
+    #                 return self.obs_noise
+    #             else:
+    #                 return 1 - self.obs_noise
+    #     else:
+    #         return 0
