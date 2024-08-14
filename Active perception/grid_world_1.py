@@ -1,15 +1,15 @@
 from random import choices
 import numpy as np
 
-WIDTH = 4
-LENGTH = 4
+WIDTH = 6
+LENGTH = 6
 
 
 class Environment:
 
     def __init__(self):
         # parameter which controls environment noise
-        self.stoPar = 0.1
+        self.stoPar = 0
         # parameter which controls observation noise
         # self.obs_noise = 1 / 3
         # Define states
@@ -17,30 +17,40 @@ class Environment:
         # self.state_indices = list(range(len(self.states)))
         self.state_size = len(self.states)
         # Define initial state
-        self.initial_state = (2, 0)
-        self.initial_state_idx = self.states.index(self.initial_state)
+        self.initial_states = [(3, 0), (0, 3), (5, 2)]
+        self.initial_state_dis = self.get_initial_distribution()
         # Define actions
         self.actions = [(1, 0), (-1, 0), (0, 1), (0, -1), (0, 0)]
         self.action_size = len(self.actions)
         # self.action_indices = list(range(len(self.actions)))
         # Goals
-        self.goals_1 = [(0, 3)]  # The goal of type 1 agent
-        self.goals_2 = [(3, 3)]  # The goal of type 2 agent
+        self.goals = [(0, 5), (5, 5)]  # The goal of agent
         # transition probability dictionary
         self.transition = self.get_transition()
         # Define observations
-        self.observations = ['b', 'r', 'n']
+        self.observations = ['1', '2', '3', '4', '5', 'n']
+        self.observations_size = len(self.observations)
         # Define sensors
-        self.sensors = [[(0, 2), (1, 2)],
-                        [(2, 2), (3, 2)]]
+        self.sensors = [[(1, 3), (1, 4), (2, 3), (2, 4)],
+                        [(4, 3), (4, 4), (5, 3), (5, 4)],
+                        [(3, 1), (3, 2), (4, 1), (4, 2)],
+                        [(1, 5), (2, 5), (3, 5), (4, 5)],
+                        [(0, 1), (1, 1), (1, 2), (2, 2)]]
+        # Define sensing actions
+        self.sensing_actions = ['1', '2', '3', '4', '5']
+        self.sensing_actions_size = len(self.sensing_actions)
         # The optimal policies
-        self.value_1 = self.value_iterations(0.01, self.goals_1)
-        self.policy_1 = self.optimal_policy(self.value_1, self.goals_1)
-        self.value_2 = self.value_iterations(0.01, self.goals_2)
-        self.policy_2 = self.optimal_policy(self.value_2, self.goals_2)
+        self.value = self.value_iterations(0.01, self.goals)
+        self.policy = self.optimal_policy(self.value, self.goals)
         # Obtain transition probabilities
-        self.transition_1 = self.get_transition_prob(self.policy_1)
-        self.transition_2 = self.get_transition_prob(self.policy_2)
+        self.transition_wc = self.get_transition_wc(self.policy)
+
+    def get_initial_distribution(self):
+        initial_dis = np.zeros([self.state_size, 1])
+        for s in range(self.state_size):
+            if self.states[s] in self.initial_states:
+                initial_dis[s, 0] = 1/len(self.initial_states) # uniform distribution
+        return initial_dis
 
     def complementary_actions(self, act):
         # Use to find out stochastic transitions, if it stays, no stochasticity, if other actions, return possible stochasticity directions.
@@ -84,7 +94,7 @@ class Environment:
         # self.check_trans(trans)
         return trans
 
-    def get_transition_prob(self, policy):
+    def get_transition_wc(self, policy):
         trans_prob = np.zeros([self.state_size, self.state_size])
         for st in self.states:
             for act in self.actions:
@@ -113,13 +123,19 @@ class Environment:
         next_state = choices(next_supp, next_prob)[0]
         return next_state
 
-    def observation_function(self, state):
-        if state in self.sensors[0]:
-            return ['b']
-        elif state in self.sensors[1]:
-            return ['r']
+    def observation_function(self, state, sAct):
+        if state in self.sensors[0] and self.observations[0] == sAct:
+            return self.observations[0]
+        elif state in self.sensors[1] and self.observations[1] == sAct:
+            return self.observations[1]
+        elif state in self.sensors[2] and self.observations[2] == sAct:
+            return self.observations[2]
+        elif state in self.sensors[3] and self.observations[3] == sAct:
+            return self.observations[3]
+        elif state in self.sensors[4] and self.observations[4] == sAct:
+            return self.observations[4]
         else:
-            return ['n']
+            return self.observations[5]
 
     # def observation_function_sampler(self, state):
     #     observation_set = self.observation_function(state)
@@ -128,8 +144,9 @@ class Environment:
     #     else:
     #         return self.observations[-1]
 
-    def emission_function(self, state, o):
-        observation_set = self.observation_function(state)
+    def emission_function(self, s, sAct, o):
+        state = self.states[s]
+        observation_set = self.observation_function(state, sAct)
         if o in observation_set:
             return 1
         else:
