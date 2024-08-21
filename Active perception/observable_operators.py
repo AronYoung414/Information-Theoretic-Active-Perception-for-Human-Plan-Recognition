@@ -8,16 +8,17 @@ env = Environment()
 def permutations_with_repetition(elements, length):
     # Generate permutations with repetition
     results = itertools.product(elements, repeat=length)
-
     # Convert each tuple to a string and collect into a list
     string_results = [''.join(result) for result in results]
-
     return string_results
 
 
 def get_memory_space(K):
-    memory_space = permutations_with_repetition(env.observations, K)
-    memory_size = env.observations_size ** K
+    memory_space = []
+    memory_size = 0
+    for k in range(1, K + 1):
+        memory_space += permutations_with_repetition(env.observations, k)
+        memory_size += env.observations_size ** k
     return memory_space, memory_size
 
 
@@ -67,17 +68,17 @@ def p_obs_g_sas0(y, sa_list, s_0):
     mu_0 = np.zeros([env.state_size, 1])
     mu_0[s_0, 0] = 1
     # Obtain observable operators
-    oo = observable_operator(y[0], sa_list[0])
+    oo = observable_operator(y[-1], sa_list[-1])
     # Creat a vector with all elements equals to 1
-    one_vec = np.zeros([1, env.state_size])
+    one_vec = np.ones([1, env.state_size])
     # Initialize the probability of observation given sensing actions and initial states
     probs = one_vec @ oo
     # Calculate the probability
-    for t in range(1, len(y)):
+    for t in reversed(range(len(y) - 1)):
         oo = observable_operator(y[t], sa_list[t])
         probs = probs @ oo
     probs = probs @ mu_0
-    return 0
+    return probs[0][0]
 
 
 def p_obs_g_sas0_initial(o_0, sa_0, s_0):
@@ -86,7 +87,13 @@ def p_obs_g_sas0_initial(o_0, sa_0, s_0):
     # Obtain observable operators
     oo = observable_operator(o_0, sa_0)
     # Creat a vector with all elements equals to 1
-    one_vec = np.zeros([1, env.state_size])
+    one_vec = np.ones([1, env.state_size])
     # Initialize the probability of observation given sensing actions and initial states
-    probs = one_vec @ oo @ mu_0
-    return probs
+    probs = one_vec @ oo
+    probs = probs @ mu_0
+    return probs[0][0]
+
+
+def p_obs_gs0(y, sa_list, s_0):
+    policy_prod = 1
+    return p_obs_g_sas0(y, sa_list, s_0)/p_obs_g_sas0_initial(y[0], sa_list[0], s_0) * policy_prod

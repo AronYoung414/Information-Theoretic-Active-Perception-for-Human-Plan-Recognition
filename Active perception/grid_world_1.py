@@ -41,7 +41,7 @@ class Environment:
         self.sensing_actions_size = len(self.sensing_actions)
         # The optimal policies
         self.value = self.value_iterations(0.01, self.goals)
-        self.policy = self.optimal_policy(self.value, self.goals)
+        self.policy = self.get_optimal_policy(self.value, self.goals)
         # Obtain transition probabilities
         self.transition_wc = self.get_transition_wc(self.policy)
 
@@ -49,7 +49,7 @@ class Environment:
         initial_dis = np.zeros([self.state_size, 1])
         for s in range(self.state_size):
             if self.states[s] in self.initial_states:
-                initial_dis[s, 0] = 1/len(self.initial_states) # uniform distribution
+                initial_dis[s, 0] = 1 / len(self.initial_states)  # uniform distribution
         return initial_dis
 
     def complementary_actions(self, act):
@@ -158,6 +158,16 @@ class Environment:
         else:
             return 0
 
+    def pi_theta(self, s, a, theta):
+        """
+        :param m: the index of a finite sequence of observation, corresponding to K-step memory
+        :param a: the sensing action to be given
+        :param theta: the policy parameter, the size state_size^3 * sensing_action_size
+        :return: the Gibbs policy given the finite memory
+        """
+        e_x = np.exp(theta[s, :] - np.max(theta[s, :]))
+        return (e_x / e_x.sum(axis=0))[a]
+
     def value_iterations(self, threshold, goal, gamma=0.8):
         """
         :param goal: indicate the type of agent
@@ -186,7 +196,7 @@ class Environment:
             values_old = np.copy(values)
         return values
 
-    def optimal_policy(self, opt_values, goal, tau=0.01, gamma=0.8):
+    def softmax_policy(self, opt_values, goal, tau=0.01, gamma=0.8):
         pi_star = np.zeros([self.state_size, self.action_size])
         for state in self.states:
             for act in self.actions:
@@ -199,4 +209,17 @@ class Environment:
                 s = self.states.index(state)
                 a = self.actions.index(act)
                 pi_star[s, a] = np.exp(next_v / tau) / np.exp(opt_values[s] / tau)
+        return pi_star
+
+    def extract_opt_theta(self, opt_values, F, tau=0.01):
+        pi_star = self.softmax_policy(opt_values, F, tau)
+        theta = np.log(pi_star)
+        return theta
+
+    def get_optimal_policy(self, opt_values, F):
+        pi_star = np.zeros([self.state_size, self.action_size])
+        theta = self.extract_opt_theta(opt_values, F)
+        for s in range(self.state_size):
+            for a in range(self.action_size):
+                pi_star[s, a] = self.pi_theta(s, a, theta)
         return pi_star

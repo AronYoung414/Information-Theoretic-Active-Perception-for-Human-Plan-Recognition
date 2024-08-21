@@ -62,7 +62,8 @@ def sample_data(M, T, theta):
     return s_data, a_data, y_data, sa_data, ep_data
 
 
-theta = np.ones([env.state_size, env.action_size])
+opt_value = env.get_optimal_policy(env.value, env.goals)
+theta = env.extract_opt_theta(env.value, env.goals)
 s_data, a_data, y_data, sa_data, ep_data = sample_data(1, 30, theta)
 for i in range(len(s_data[0])):
     print("The state is", env.states[s_data[0][i]])
