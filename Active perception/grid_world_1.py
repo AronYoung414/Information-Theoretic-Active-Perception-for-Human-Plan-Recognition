@@ -9,9 +9,9 @@ class Environment:
 
     def __init__(self):
         # parameter which controls environment noise
-        self.stoPar = 0
+        self.stoPar = 0.2
         # parameter which controls observation noise
-        # self.obs_noise = 1 / 3
+        self.obs_noise = 0.3
         # Define states
         self.states = [(i, j) for i in range(WIDTH) for j in range(LENGTH)]
         # self.state_indices = list(range(len(self.states)))
@@ -125,32 +125,45 @@ class Environment:
 
     def observation_function(self, state, sAct):
         if state in self.sensors[0] and self.observations[0] == sAct:
-            return self.observations[0]
+            return [self.observations[0], self.observations[5]]
         elif state in self.sensors[1] and self.observations[1] == sAct:
-            return self.observations[1]
+            return [self.observations[1], self.observations[5]]
         elif state in self.sensors[2] and self.observations[2] == sAct:
-            return self.observations[2]
+            return [self.observations[2], self.observations[5]]
         elif state in self.sensors[3] and self.observations[3] == sAct:
-            return self.observations[3]
+            return [self.observations[3], self.observations[5]]
         elif state in self.sensors[4] and self.observations[4] == sAct:
-            return self.observations[4]
+            return [self.observations[4], self.observations[5]]
         else:
-            return self.observations[5]
+            return [self.observations[5]]
 
-    # def observation_function_sampler(self, state):
-    #     observation_set = self.observation_function(state)
-    #     if len(observation_set) > 1:
-    #         return choices(observation_set, [1 - self.obs_noise, self.obs_noise], k=1)[0]
+    # def emission_function(self, s, sAct, o):
+    #     state = self.states[s]
+    #     observation_set = self.observation_function(state, sAct)
+    #     if o in observation_set:
+    #         return 1
     #     else:
-    #         return self.observations[-1]
+    #         return 0
 
     def emission_function(self, s, sAct, o):
         state = self.states[s]
         observation_set = self.observation_function(state, sAct)
         if o in observation_set:
-            return 1
+            if o == self.observations[5] and len(observation_set) == 1:
+                return 1
+            elif o == self.observations[5] and len(observation_set) == 2:
+                return self.obs_noise
+            else:
+                return 1 - self.obs_noise
         else:
             return 0
+        
+    def observation_function_sampler(self, state, sAct):
+        observation_set = self.observation_function(state, sAct)
+        if len(observation_set) == 1:
+            return self.observations[5]
+        else:
+            return choices(observation_set, [1 - self.obs_noise, self.obs_noise], k=1)[0]
 
     def get_reward(self, state, F):
         if state in F:

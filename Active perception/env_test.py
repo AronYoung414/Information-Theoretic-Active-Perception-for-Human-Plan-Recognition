@@ -24,7 +24,7 @@ def sample_data(M, T, theta):
     a_data = np.zeros([M, T], dtype=np.int32)
     sa_data = []
     y_data = []
-    ep_data = np.zeros([M, T], dtype=np.int32)
+    ep_data = np.zeros([M, T])
     for m in range(M):
         y = []
         sa_list = []
@@ -34,7 +34,7 @@ def sample_data(M, T, theta):
         sAct = choice(env.sensing_actions)
         sa_list.append(sAct)
         # Get the observation of initial state
-        o = env.observation_function(state, sAct)
+        o = env.observation_function_sampler(state, sAct)
         y.append(o)
         # Sample the action from initial state
         act = action_sampler(theta, state)
@@ -52,7 +52,7 @@ def sample_data(M, T, theta):
             sAct = choice(env.sensing_actions)
             sa_list.append(sAct)
             # Add the observation
-            o = env.observation_function(state, sAct)
+            o = env.observation_function_sampler(state, sAct)
             y.append(o)
             # sample action
             act = action_sampler(theta, state)
