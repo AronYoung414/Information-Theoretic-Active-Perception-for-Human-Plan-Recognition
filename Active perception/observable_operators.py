@@ -3,9 +3,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 import pickle
-
-import warnings
-warnings.filterwarnings("ignore", category=RuntimeWarning)
+from math import isinf
 
 from random import choices, choice
 from concurrent.futures import ProcessPoolExecutor
@@ -16,6 +14,18 @@ from finite_state_controller import FSC
 
 env = Environment()
 fsc = FSC()
+
+
+def get_prior_distribution(prior):
+    initial_dis = np.zeros([env.state_size, 1])
+    for i in range(len(env.initial_states)):
+        state_0 = env.initial_states[i]
+        s_0 = env.states.index(state_0)
+        initial_dis[s_0] = prior[i]
+    return initial_dis
+
+
+PRIOR = get_prior_distribution([0.1, 0.4, 0.5])
 
 
 def pi_theta(m, sa, theta):
@@ -35,16 +45,16 @@ def log_policy_gradient(m, sa, theta):
     memory_size = fsc.memory_size
     gradient = np.zeros([memory_size, env.sensing_actions_size])
     memory = memory_space[m]
-    sen_act = env.sensing_actions[sa]
+    senAct = env.sensing_actions[sa]
     for m_prime in range(memory_size):
         for a_prime in range(env.sensing_actions_size):
             memory_p = memory_space[m_prime]
-            senact_p = env.sensing_actions[a_prime]
+            senAct_p = env.sensing_actions[a_prime]
             indicator_m = 0
             indicator_a = 0
             if memory == memory_p:
                 indicator_m = 1
-            if sen_act == senact_p:
+            if senAct == senAct_p:
                 indicator_a = 1
             partial_pi_theta = indicator_m * (indicator_a - pi_theta(m_prime, a_prime, theta))
             gradient[m_prime, a_prime] = partial_pi_theta
@@ -60,7 +70,9 @@ def observable_operator(o_t, a_t):
     return oo
 
 
-def p_obs_g_sas0(y, senAct_list, s_0):
+def p_obs_g_sas0(y, sa_list, s_0):
+    # Get the real sensing actions
+    senAct_list = [env.sensing_actions[sa] for sa in sa_list]
     # Give value to the initial state
     mu_0 = np.zeros([env.state_size, 1])
     mu_0[s_0, 0] = 1
@@ -74,12 +86,17 @@ def p_obs_g_sas0(y, senAct_list, s_0):
     for t in reversed(range(len(y) - 1)):
         oo = observable_operator(y[t], senAct_list[t])
         probs = probs @ oo
+    # print(y)
+    # print(senAct_list)
+    # print(probs)
     probs_1 = probs @ mu_0
-    probs_2 = probs @ env.initial_state_dis
+    probs_2 = probs @ PRIOR
     return probs_1[0][0], probs_2[0][0]
 
 
-def p_obs_g_sas0_initial(o_0, senAct_0, s_0):
+def p_obs_g_sas0_initial(o_0, sa_0, s_0):
+    # Get real sensing action
+    senAct_0 = env.sensing_actions[sa_0]
     mu_0 = np.zeros([env.state_size, 1])
     mu_0[s_0, 0] = 1
     # Obtain observable operators
@@ -89,7 +106,7 @@ def p_obs_g_sas0_initial(o_0, senAct_0, s_0):
     # Initialize the probability of observation given sensing actions and initial states
     probs = one_vec @ oo
     probs_1 = probs @ mu_0
-    probs_2 = probs @ env.initial_state_dis
+    probs_2 = probs @ PRIOR
     return probs_1[0][0], probs_2[0][0]
 
 
@@ -124,8 +141,10 @@ def log_p_theta_obs_g_s0(y, sa_list, s_0, theta):
         o = fsc.observations.index(y[i])
         m = fsc.transition[m][o]
         policy_sum += np.log2(pi_theta(m, sa_list[i + 1], theta))
-    return np.log2(p_obs_g_sas0(y, sa_list, s_0)[0]) - np.log2(
-        p_obs_g_sas0_initial(y[0], sa_list[0], s_0)[0]) + policy_sum
+    log_p_y_g_sas0 = np.log2(p_obs_g_sas0(y, sa_list, s_0)[0]) if p_obs_g_sas0(y, sa_list, s_0)[0] > 0 else float(
+        '-inf')
+    # print(log_p_y_g_sas0)
+    return log_p_y_g_sas0 - np.log2(p_obs_g_sas0_initial(y[0], sa_list[0], s_0)[0]) + policy_sum
 
 
 def log_p_theta_obs(y, sa_list, s_0, theta):
@@ -142,7 +161,9 @@ def log_p_theta_obs(y, sa_list, s_0, theta):
         o = fsc.observations.index(y[i])
         m = fsc.transition[m][o]
         policy_sum += np.log2(pi_theta(m, sa_list[i + 1], theta))
-    return np.log2(p_obs_g_sas0(y, sa_list, s_0)[1]) - np.log2(
+    log_p_y_g_sa = np.log2(p_obs_g_sas0(y, sa_list, s_0)[1]) if p_obs_g_sas0(y, sa_list, s_0)[1] > 0 else float('-inf')
+    # print(log_p_y_g_sa)
+    return log_p_y_g_sa - np.log2(
         p_obs_g_sas0_initial(y[0], sa_list[0], s_0)[1]) + policy_sum
 
 
@@ -170,7 +191,7 @@ def p_theta_obs(y, sa_list, theta):
     p_obs = 0
     for state_0 in env.initial_states:
         s_0 = env.states.index(state_0)
-        p_obs += p_theta_obs_g_s0(y, sa_list, s_0, theta) * env.initial_state_dis[s_0, 0]
+        p_obs += p_theta_obs_g_s0(y, sa_list, s_0, theta) * PRIOR[s_0, 0]
     return p_obs
 
 
@@ -178,7 +199,7 @@ def nabla_p_theta_obs(y, sa_list, theta):
     nabla_p_obs = 0
     for state_0 in env.initial_states:
         s_0 = env.states.index(state_0)
-        nabla_p_obs += env.initial_state_dis[s_0, 0] * nabla_p_theta_obs_g_s0(y, sa_list, s_0, theta)
+        nabla_p_obs += PRIOR[s_0, 0] * nabla_p_theta_obs_g_s0(y, sa_list, s_0, theta)
     return nabla_p_obs
 
 
@@ -196,22 +217,44 @@ def nabla_log_p_theta_obs(y, sa_list, theta):
     return log_grad_sum
 
 
+def p_theta_s0_g_y_stable(y, sa_list, theta, scale_factor=1e10):
+    prob_list = np.zeros(len(env.initial_states))
+    for i in range(len(env.initial_states)):
+        state_0 = env.initial_states[i]
+        s_0 = env.states.index(state_0)
+        # Highly depends on the prior distribution
+        # print(state_0)
+        p_theta_y_s0 = p_theta_obs_g_s0(y, sa_list, s_0, theta)
+        # print(p_theta_y_s0)
+        prob_list[i] = p_theta_y_s0 * PRIOR[s_0, 0]
+    scaled_prob_list = [x * scale_factor for x in prob_list]
+    total = sum(scaled_prob_list)
+    if total == 0:
+        normalized_list = [1 / len(prob_list) for i in range(len(prob_list))]
+    else:
+        normalized_list = [x / total for x in scaled_prob_list]
+    return normalized_list
+
+
 def log_p_theta_s0_g_y(y, sa_list, s_0, theta):
     log_p_theta_y_g_s0 = log_p_theta_obs_g_s0(y, sa_list, s_0, theta)
     log_p_theta_y = log_p_theta_obs(y, sa_list, s_0, theta)
-    return log_p_theta_y_g_s0 + np.log2(env.initial_state_dis[s_0, 0]) - log_p_theta_y
+    if isinf(log_p_theta_y_g_s0) or isinf(log_p_theta_y):
+        return float('-inf')
+    else:
+        return log_p_theta_y_g_s0 + np.log2(PRIOR[s_0, 0]) - log_p_theta_y
 
 
 # def p_theta_s0_g_y(y, sa_list, s_0, theta):
-#     return p_theta_obs_g_s0(y, sa_list, s_0, theta) * env.initial_state_dis[s_0, 0] / p_theta_obs(y, sa_list, theta)
+#     return p_theta_obs_g_s0(y, sa_list, s_0, theta) * PRIOR[s_0, 0] / p_theta_obs(y, sa_list, theta)
 
 
-def p_theta_s0_g_y(y, sa_list, s_0, theta):
+def p_theta_s0_g_y(y, sa_list, s_0, theta): # summation not equal to 1!
     return 2 ** log_p_theta_s0_g_y(y, sa_list, s_0, theta)
 
 
 def nabla_p_theta_s0_g_y(y, sa_list, s_0, theta):
-    const = env.initial_state_dis[s_0, 0] / (p_theta_obs(y, sa_list, theta) ** 2)
+    const = PRIOR[s_0, 0] / (p_theta_obs(y, sa_list, theta) ** 2)
     grad_diff = (nabla_p_theta_obs_g_s0(y, sa_list, s_0, theta) * p_theta_obs(y, sa_list, theta)
                  - p_theta_obs_g_s0(y, sa_list, s_0, theta) * nabla_p_theta_obs(y, sa_list, theta))
     return const * grad_diff
@@ -227,10 +270,12 @@ def entropy_a_grad(y_data, sa_data, theta):  # only for debugging
         # Get the values when z_T = 1
         # p_theta_yk = p_theta_obs(y_k, sa_list_k, theta)
         grad_log_P_theta_yk = nabla_log_p_theta_obs(y_k, sa_list_k, theta)
+        p_theta_s0_yk_list = p_theta_s0_g_y_stable(y_k, sa_list_k, theta)
+        # print('The posterior distribution is', p_theta_s0_yk_list)
+        # print('#'*100)
 
-        for state_0 in env.initial_states:
-            s_0 = env.states.index(state_0)
-            p_theta_s0_yk = p_theta_s0_g_y(y_k, sa_list_k, s_0, theta)
+        for i in range(len(env.initial_states)):
+            p_theta_s0_yk = p_theta_s0_yk_list[i]
             # log2_p_theta_s0_yk = np.log2(p_theta_s0_yk) if p_theta_s0_yk > 0 else 0
             temp_H = p_theta_s0_yk * np.log2(p_theta_s0_yk) if p_theta_s0_yk > 0 else 0
             H += temp_H
@@ -245,17 +290,19 @@ def entropy_a_grad_per_iter(y_k, sa_list_k, theta):
     # Get the values when z_T = 1
     # p_theta_yk = p_theta_obs(y_k, sa_list_k, theta)
     grad_log_P_theta_yk = nabla_log_p_theta_obs(y_k, sa_list_k, theta)
+    p_theta_s0_yk_list = p_theta_s0_g_y_stable(y_k, sa_list_k, theta)
     H_per_iter = 0
     nabla_H_per_iter = np.zeros([fsc.memory_size, env.sensing_actions_size])
 
-    for state_0 in env.initial_states:
-        s_0 = env.states.index(state_0)
-        p_theta_s0_yk = p_theta_s0_g_y(y_k, sa_list_k, s_0, theta)
+    for i in range(len(env.initial_states)):
+        p_theta_s0_yk = p_theta_s0_yk_list[i]
+        # print(p_theta_s0_yk)
         log2_p_theta_s0_yk = np.log2(p_theta_s0_yk) if p_theta_s0_yk > 0 else 0
         temp_H = p_theta_s0_yk * log2_p_theta_s0_yk if p_theta_s0_yk > 0 else 0
         H_per_iter += temp_H
         # grad_p_theta_s0_yk = nabla_p_theta_s0_g_y(y_k, sa_list_k, s_0, theta)
         nabla_H_per_iter += temp_H * grad_log_P_theta_yk
+    # print(H_per_iter)
     return H_per_iter, nabla_H_per_iter
 
 
@@ -332,11 +379,11 @@ def sample_data(M, T, theta):
 
 def main():
     # Define hyperparameters
-    ex_num = 3
-    iter_num = 1000  # iteration number of gradient ascent
+    ex_num = 1
+    iter_num = 2000  # iteration number of gradient ascent
     M = 2000  # number of sampled trajectories
     T = 10  # length of a trajectory
-    eta = 0.2  # step size for theta
+    eta = 0.5  # step size for theta
     # kappa = 0.2  # step size for lambda
     # F = env.goals  # Define the goal region
     # alpha = 0.3  # value constraint
@@ -351,7 +398,7 @@ def main():
     # lam = np.random.uniform(1, 10)
     # Create empty lists
     entropy_list = []
-    # value_list = []
+    theta_list = [theta]
     # Sample trajectories (observations)
     for i in range(iter_num):
         start = time.time()
@@ -361,19 +408,19 @@ def main():
         # print(y_data)
         # SGD gradient
         approx_entropy, grad_H = entropy_a_grad_multi(y_data, sa_data, theta)
-        # print(grad_H)
         # print("The gradient of entropy is", grad_H)
         print("The conditional entropy is", approx_entropy)
         entropy_list.append(approx_entropy)
         # SGD updates
         theta = theta - eta * grad_H
-        # lam = lam - kappa * (approx_value - alpha)
+        theta_list.append(theta)
         ###############################################
         end = time.time()
-        print("One iteration done. It takes", end - start, "s")
+        print(f"iteration_{i} done. It takes", end - start, "s")
+        print("#" * 100)
 
-    with open(f'./grid_world_1_data/Values/theta_{ex_num}.npy', 'wb') as f:
-        np.save(f, theta)
+    with open(f'./grid_world_1_data/Values/thetaList_{ex_num}', "wb") as pkl_wb_obj:
+        pickle.dump(theta_list, pkl_wb_obj)
 
     with open(f'./grid_world_1_data/Values/entropy_{ex_num}', "wb") as pkl_wb_obj:
         pickle.dump(entropy_list, pkl_wb_obj)
@@ -383,7 +430,7 @@ def main():
     plt.xlabel("The iteration number")
     plt.ylabel("entropy")
     plt.legend()
-    plt.savefig(f'./grid_world_1_data/Graphs/Ex_{ex_num}_iter1k_M2000_T10.png')
+    plt.savefig(f'./grid_world_1_data/Graphs/CorrectEx_{ex_num}_iter2k_M2k_T10.png')
     plt.show()
 
 

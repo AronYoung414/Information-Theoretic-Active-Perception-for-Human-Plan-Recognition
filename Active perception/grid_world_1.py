@@ -9,7 +9,7 @@ class Environment:
 
     def __init__(self):
         # parameter which controls environment noise
-        self.stoPar = 0.2
+        self.stoPar = 0
         # parameter which controls observation noise
         self.obs_noise = 0.3
         # Define states
