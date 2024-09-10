@@ -9,7 +9,7 @@ from random import choices, choice
 from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 
-from grid_world_1 import Environment
+from grid_world_2_obstacle import Environment
 from finite_state_controller import FSC
 
 env = Environment()
@@ -416,13 +416,13 @@ def main():
         theta_list.append(theta)
         ###############################################
         end = time.time()
-        print(f"iteration_{i} done. It takes", end - start, "s")
+        print(f"iteration_{i+1} done. It takes", end - start, "s")
         print("#" * 100)
 
-    with open(f'./grid_world_1_data/Values/thetaList_{ex_num}', "wb") as pkl_wb_obj:
+    with open(f'./grid_world_2_data/Values/Correct_thetaList_{ex_num}', "wb") as pkl_wb_obj:
         pickle.dump(theta_list, pkl_wb_obj)
 
-    with open(f'./grid_world_1_data/Values/entropy_{ex_num}', "wb") as pkl_wb_obj:
+    with open(f'./grid_world_2_data/Values/Correct_entropy_{ex_num}', "wb") as pkl_wb_obj:
         pickle.dump(entropy_list, pkl_wb_obj)
 
     iteration_list = range(iter_num)
@@ -430,7 +430,7 @@ def main():
     plt.xlabel("The iteration number")
     plt.ylabel("entropy")
     plt.legend()
-    plt.savefig(f'./grid_world_1_data/Graphs/CorrectEx_{ex_num}_iter2k_M2k_T10.png')
+    plt.savefig(f'./grid_world_2_data/Graphs/CorrectEx_{ex_num}_dynaNoi01_obsNoi01.png')
     plt.show()
 
 

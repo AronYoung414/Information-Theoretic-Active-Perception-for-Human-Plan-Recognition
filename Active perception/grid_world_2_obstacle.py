@@ -12,8 +12,11 @@ class Environment:
         self.stoPar = 0.1
         # parameter which controls observation noise
         self.obs_noise = 0.1
+        # Define obstacles
+        self.obstacles = [(2, 1), (5, 1), (0, 2), (3, 3)]
         # Define states
-        self.states = [(i, j) for i in range(WIDTH) for j in range(LENGTH)]
+        self.whole_states = [(i, j) for i in range(WIDTH) for j in range(LENGTH)]
+        self.states = list(set(self.whole_states) - set(self.obstacles))
         # self.state_indices = list(range(len(self.states)))
         self.state_size = len(self.states)
         # Define initial state

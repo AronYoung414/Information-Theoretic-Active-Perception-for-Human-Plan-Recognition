@@ -1,5 +1,5 @@
 import numpy as np
-from grid_world_1 import Environment
+from grid_world_2_obstacle import Environment
 from random import choices
 from random import choice
 
