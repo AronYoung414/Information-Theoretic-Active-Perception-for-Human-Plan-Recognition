@@ -21,15 +21,6 @@ from grid_world_2_obstacle import Environment
 fsc = FSC()
 env = Environment()
 
-# Correct_thetaList_1 is the results of new experiment
-with open(f'grid_world_2_data/Values/Correct_thetaList_1', "rb") as pkl_rb_obj:
-    theta_list = pickle.load(pkl_rb_obj)
-
-iter_num = 1000
-M = 1  # number of sampled trajectories
-T = 10  # length of a trajectory
-ex_num = 3
-
 
 def log_p_theta_s0_g_multiY(s_0, y_data, sa_data, theta):
     M = len(y_data)
@@ -127,72 +118,84 @@ def sample_data_fixInit(state_0, M, T, theta):
     return s_data, a_data, y_data, sa_data
 
 
-fix_state_0 = (5, 2)
+# Correct_thetaList_1 is the results of new experiment
+with open(f'grid_world_2_data/Values/Correct_thetaList_1', "rb") as pkl_rb_obj:
+    theta_list = pickle.load(pkl_rb_obj)
 
-theta = np.random.random([fsc.memory_size, env.sensing_actions_size])
-s_data, a_data, y_data, sa_data = sample_data_fixInit(fix_state_0, M, T, theta)
-y_list = y_data[0]
-sa_list = sa_data[0]
-type_1_list_r = []
-type_2_list_r = []
-type_3_list_r = []
-for t in range(T):
-    type_1_list_r.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta)[0])
-    type_2_list_r.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta)[1])
-    type_3_list_r.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta)[2])
-
+theta_r = np.random.random([fsc.memory_size, env.sensing_actions_size])
 theta = theta_list[-1]
-s_data, a_data, y_data, sa_data = sample_data_fixInit(fix_state_0, M, T, theta)
-y_list = y_data[0]
-sa_list = sa_data[0]
-type_1_list = []
-type_2_list = []
-type_3_list = []
-for t in range(T):
-    type_1_list.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta)[0])
-    type_2_list.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta)[1])
-    type_3_list.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta)[2])
 
-with open(f'./grid_world_2_data/Values/Results_Analysis/type_1_list_r_{ex_num}', "wb") as pkl_wb_obj:
-    pickle.dump(type_1_list_r, pkl_wb_obj)
+iter_num = 1000
+M = 1  # number of sampled trajectories
+T = 10  # length of a trajectory
 
-with open(f'./grid_world_2_data/Values/Results_Analysis/type_2_list_r_{ex_num}', "wb") as pkl_wb_obj:
-    pickle.dump(type_2_list_r, pkl_wb_obj)
+for type_num in range(1, 4):
+    fix_state_0 = env.initial_states[type_num - 1]
 
-with open(f'./grid_world_2_data/Values/Results_Analysis/type_3_list_r_{ex_num}', "wb") as pkl_wb_obj:
-    pickle.dump(type_3_list_r, pkl_wb_obj)
+    s_data, a_data, y_data, sa_data = sample_data_fixInit(fix_state_0, M, T, theta_r)
+    y_list = y_data[0]
+    sa_list = sa_data[0]
+    type_1_list_r = []
+    type_2_list_r = []
+    type_3_list_r = []
+    for t in range(T):
+        type_1_list_r.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta_r)[0])
+        type_2_list_r.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta_r)[1])
+        type_3_list_r.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta_r)[2])
 
-with open(f'./grid_world_2_data/Values/Results_Analysis/type_1_list_{ex_num}', "wb") as pkl_wb_obj:
-    pickle.dump(type_1_list, pkl_wb_obj)
+    s_data, a_data, y_data, sa_data = sample_data_fixInit(fix_state_0, M, T, theta)
+    print([env.sensing_actions[sa] for sa in sa_data[0]])
+    y_list = y_data[0]
+    sa_list = sa_data[0]
+    type_1_list = []
+    type_2_list = []
+    type_3_list = []
+    for t in range(T):
+        type_1_list.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta)[0])
+        type_2_list.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta)[1])
+        type_3_list.append(p_theta_s0_g_y_stable(y_list[:t + 1], sa_list[:t + 1], theta)[2])
 
-with open(f'./grid_world_2_data/Values/Results_Analysis/type_2_list_{ex_num}', "wb") as pkl_wb_obj:
-    pickle.dump(type_2_list, pkl_wb_obj)
+    # with open(f'./grid_world_2_data/Values/Results_Analysis_Fixed/type_1_list_r_{type_num}', "wb") as pkl_wb_obj:
+    #     pickle.dump(type_1_list_r, pkl_wb_obj)
+    #
+    # with open(f'./grid_world_2_data/Values/Results_Analysis_Fixed/type_2_list_r_{type_num}', "wb") as pkl_wb_obj:
+    #     pickle.dump(type_2_list_r, pkl_wb_obj)
+    #
+    # with open(f'./grid_world_2_data/Values/Results_Analysis_Fixed/type_3_list_r_{type_num}', "wb") as pkl_wb_obj:
+    #     pickle.dump(type_3_list_r, pkl_wb_obj)
+    #
+    # with open(f'./grid_world_2_data/Values/Results_Analysis_Fixed/type_1_list_{type_num}', "wb") as pkl_wb_obj:
+    #     pickle.dump(type_1_list, pkl_wb_obj)
+    #
+    # with open(f'./grid_world_2_data/Values/Results_Analysis_Fixed/type_2_list_{type_num}', "wb") as pkl_wb_obj:
+    #     pickle.dump(type_2_list, pkl_wb_obj)
+    #
+    # with open(f'./grid_world_2_data/Values/Results_Analysis_Fixed/type_3_list_{type_num}', "wb") as pkl_wb_obj:
+    #     pickle.dump(type_3_list, pkl_wb_obj)
 
-with open(f'./grid_world_2_data/Values/Results_Analysis/type_3_list_{ex_num}', "wb") as pkl_wb_obj:
-    pickle.dump(type_3_list, pkl_wb_obj)
-
-# Create plot
-fig, ax = plt.subplots()
-# Plot lines
-line1, = ax.plot(range(T), type_1_list_r, ':b.', label='type 1 (random)')
-line2, = ax.plot(range(T), type_2_list_r, ':rD', label='type 2 (random)')
-line3, = ax.plot(range(T), type_3_list_r, ':gs', label='type 3 (random)')
-line4, = ax.plot(range(T), type_1_list, '-b.', label='type 1 (min_entropy)')
-line5, = ax.plot(range(T), type_2_list, '-rD', label='type 2 (min_entropy)')
-line6, = ax.plot(range(T), type_3_list, '-gs', label='type 3 (min_entropy)')
-plt.xlabel(r"The time step $t$")
-plt.ylabel("The belief (posterior initial distribution)")
-plt.title("The Evolution of Belief (True Type is 3)")
-# Create first legend for the first 3 lines
-first_legend = ax.legend([line1, line2, line3],
-                         ['type 1 (random)','type 2 (random)','type 3 (random)'],
-                         loc='upper left', bbox_to_anchor=(0, 1))
-# Add the first legend manually to the plot
-ax.add_artist(first_legend)
-# Create a second legend for other lines
-ax.legend([line4, line5, line6],
-          ['type 1 (min_entropy)', 'type 2 (min_entropy)', 'type 3 (min_entropy)'],
-          loc='lower right', bbox_to_anchor=(1, 0.3))
-plt.savefig(f'./grid_world_2_data/Graphs/Results_Analysis/type_3_{ex_num}.png')
-plt.savefig(f'./grid_world_2_data/Graphs/Results_Analysis/type_3_{ex_num}.pdf', format="pdf", bbox_inches="tight")
-plt.show()
+    # Create plot
+    fig, ax = plt.subplots()
+    # Plot lines
+    line1, = ax.plot(range(T), type_1_list_r, ':b.', label='type 1 (random)')
+    line2, = ax.plot(range(T), type_2_list_r, ':rD', label='type 2 (random)')
+    line3, = ax.plot(range(T), type_3_list_r, ':gs', label='type 3 (random)')
+    line4, = ax.plot(range(T), type_1_list, '-b.', label='type 1 (min_entropy)')
+    line5, = ax.plot(range(T), type_2_list, '-rD', label='type 2 (min_entropy)')
+    line6, = ax.plot(range(T), type_3_list, '-gs', label='type 3 (min_entropy)')
+    plt.xlabel(r"The time step $t$")
+    plt.ylabel("The belief (posterior initial distribution)")
+    plt.title(f"The Evolution of Belief (True Type is {type_num})")
+    # Create first legend for the first 3 lines
+    first_legend = ax.legend([line1, line2, line3],
+                             ['type 1 (random)', 'type 2 (random)', 'type 3 (random)'],
+                             loc='upper left', bbox_to_anchor=(0, 1))
+    # Add the first legend manually to the plot
+    ax.add_artist(first_legend)
+    # Create a second legend for other lines
+    ax.legend([line4, line5, line6],
+              ['type 1 (min_entropy)', 'type 2 (min_entropy)', 'type 3 (min_entropy)'],
+              loc='lower right', bbox_to_anchor=(1, 0.3))
+    # plt.savefig(f'./grid_world_2_data/Graphs/Results_Analysis_Fixed/type_{type_num}.png')
+    # plt.savefig(f'./grid_world_2_data/Graphs/Results_Analysis_Fixed/type_{type_num}.pdf', format="pdf",
+    #             bbox_inches="tight")
+    plt.show()

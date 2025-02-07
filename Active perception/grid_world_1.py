@@ -45,6 +45,14 @@ class Environment:
         # Obtain transition probabilities
         self.transition_wc = self.get_transition_wc(self.policy)
 
+    def get_prior_distribution(self, prior):
+        initial_dis = np.zeros([self.state_size, 1])
+        for i in range(len(self.initial_states)):
+            state_0 = self.initial_states[i]
+            s_0 = self.states.index(state_0)
+            initial_dis[s_0] = prior[i]
+        return initial_dis
+
     def get_initial_distribution(self):
         initial_dis = np.zeros([self.state_size, 1])
         for s in range(self.state_size):
